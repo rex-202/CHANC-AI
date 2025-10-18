@@ -25,6 +25,11 @@ if db_url.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# !!! --- LÍNEA AGREGADA PARA SOLUCIONAR EL ERROR DE CONEXIÓN --- !!!
+# Esto comprueba si la conexión sigue activa antes de usarla.
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"pool_pre_ping": True}
+# !!! ----------------------------------------------------------- !!!
+
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
