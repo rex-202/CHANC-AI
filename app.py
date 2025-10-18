@@ -13,10 +13,10 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 
-# Configuración de la base de datos
+# --- CONFIGURACIÓN DE BASE DE DATOS (CORREGIDA) ---
 db_url = os.getenv('DATABASE_URL')
 if not db_url:
-    raise ValueError("DATABASE_URL no está configurada en el archivo .env o variables de entorno")
+    raise ValueError("DATABASE_URL no está configurada en las variables de entorno")
 
 # SQLAlchemy 2.0 prefiere 'postgresql://' en lugar de 'postgres://'
 if db_url.startswith("postgres://"):
@@ -25,10 +25,10 @@ if db_url.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# !!! --- LÍNEA AGREGADA PARA SOLUCIONAR EL ERROR DE CONEXIÓN --- !!!
+# !!! --- FIX 1: SOLUCIÓN PARA 'Connection refused' --- !!!
 # Esto comprueba si la conexión sigue activa antes de usarla.
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"pool_pre_ping": True}
-# !!! ----------------------------------------------------------- !!!
+# !!! ------------------------------------------------- !!!
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -52,7 +52,6 @@ class User(db.Model, UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Asegúrate de que la sesión de la base de datos se maneje correctamente
     with app.app_context():
         return User.query.get(int(user_id))
 
@@ -110,11 +109,8 @@ def obtener_datos_gfw(api_key, imo):
         
         vessel_id = self_reported_info[0].get("id")
         
-        # --- CORRECCIÓN PARA EVITAR IndexError ---
         registry_info_list = vessel_data["entries"][0].get("registryInfo")
-        # Si la lista existe y tiene elementos, tomamos el primero; si no, usamos un dict vacío.
         registry_info = registry_info_list[0] if registry_info_list and len(registry_info_list) > 0 else {}
-        # ------------------------------------------
 
         gfw_summary = {
             "nombre_registrado": registry_info.get("shipname", "No disponible"),
@@ -202,7 +198,6 @@ def accion_principal(imo_barco, user_nombre):
         f"**DATOS DE IDENTIDAD Y ACTIVIDAD (Global Fishing Watch):**\n{datos_gfw}"
     )
     
-    # --- (PROMPT FINAL CORREGIDO PARA PERSONALIZACIÓN) ---
     prompt = (
         f"Eres Chanc-ai, un analista experto en logística marítima. Tu tarea es redactar un informe ejecutivo personalizado para el usuario '{user_nombre}'. "
         "El informe debe ser fluido, integrado y en un tono narrativo. No enumeres los datos; en su lugar, úsalos para construir un análisis coherente.\n\n"
@@ -222,22 +217,17 @@ def accion_principal(imo_barco, user_nombre):
 def home():
     return render_template('index.html')
 
-# !!! ================================================================= !!!
-# !!! RUTA TEMPORAL PARA CREAR TABLAS EN RENDER                         !!!
-# !!! Visita https://chanc-ai.onrender.com/create-db-tables-once        !!!
-# !!! UNA VEZ después de desplegar, y LUEGO BORRA ESTE CÓDIGO.         !!!
-# !!! ================================================================= !!!
+# !!! --- FIX 2: RUTA TEMPORAL PARA CREAR LAS TABLAS --- !!!
+# Esta ruta la usaremos solo una vez para crear las tablas en la BD de Render.
 @app.route('/create-db-tables-once')
 def create_db_tables_once():
     try:
         with app.app_context():
             db.create_all()
-        return "Tablas creadas exitosamente!", 200
+        return "¡Tablas creadas exitosamente!", 200
     except Exception as e:
         return f"Error al crear tablas: {str(e)}", 500
-# !!! ================================================================= !!!
-# !!! FIN DEL BLOQUE TEMPORAL                                           !!!
-# !!! ================================================================= !!!
+# !!! ---------------------------------------------------- !!!
 
 @app.route('/api/generar-informe', methods=['POST'])
 def generar_informe_api():
