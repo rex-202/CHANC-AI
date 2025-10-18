@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chanc-ai | Asistente de Logística Marítima</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        #app { display: flex; flex-direction: column; height: 100vh; }
+        main { flex-grow: 1; overflow-y: auto; }
+        header { z-index: 1001 !important; }
+        .leaflet-container { height: 100%; width: 100%; border-radius: 0.5rem; min-height: 300px; }
+        .card { transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        #informe-container::-webkit-scrollbar, #clima-container::-webkit-scrollbar { width: 6px; }
+        #informe-container::-webkit-scrollbar-track, #clima-container::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
+        #informe-container::-webkit-scrollbar-thumb, #clima-container::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+        #informe-container::-webkit-scrollbar-thumb:hover, #clima-container::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="text-gray-800">
+    <div id="app">
+        <header class="bg-white shadow-md sticky top-0">
+             <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M6 12h12"/><path d="M6 12a6 6 0 0 1 6-6 6 6 0 0 1 6 6v0a6 6 0 0 1-6 6 6 6 0 0 1-6-6v0Z"/><path d="M6 12a6 6 0 0 0 6 6 6 6 0 0 0 6-6v0a6 6 0 0 0-6-6 6 6 0 0 0-6 6v0Z"/><path d="M12 6a6 6 0 0 0-6 6v0a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6 6 6 0 0 0-6-6Z"/><path d="M12 18a6 6 0 0 1 6-6v0a6 6 0 0 1-6-6v0a6 6 0 0 1-6 6 6 6 0 0 1 6 6Z"/></svg>
+                    <span class="text-2xl font-bold text-gray-800">Chanc-ai</span>
+                </div>
+                <div id="nav-links-desktop" class="hidden md:flex items-center space-x-6">
+                    <a href="#" class="text-gray-600 hover:text-blue-600 nav-link" data-view="home">Inicio</a>
+                    <span id="user-menu" class="hidden items-center space-x-4">
+                        <span id="user-greeting" class="text-gray-600"></span>
+                        <a href="#" id="logout-btn" class="text-sm text-red-500 hover:text-red-700">Cerrar Sesión</a>
+                    </span>
+                    <a href="#" id="login-link" class="text-gray-600 hover:text-blue-600 nav-link" data-view="login">Mi Cuenta</a>
+                    <a href="#" class="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 nav-link" data-view="search">Búsqueda</a>
+                </div>
+                <button id="mobile-menu-button" class="md:hidden"><i data-lucide="menu"></i></button>
+            </nav>
+            <div id="mobile-menu" class="hidden md:hidden px-6 pb-4 space-y-2">
+                <a href="#" class="block py-2 text-gray-600 hover:text-blue-600 nav-link" data-view="home">Inicio</a>
+                <a href="#" id="mobile-login-link" class="block py-2 text-gray-600 hover:text-blue-600 nav-link" data-view="login">Mi Cuenta</a>
+                <div id="mobile-user-menu" class="hidden space-y-2">
+                     <span id="mobile-user-greeting" class="block py-2 text-gray-600"></span>
+                     <a href="#" id="mobile-logout-btn" class="block py-2 text-red-500 hover:text-red-700">Cerrar Sesión</a>
+                </div>
+                <a href="#" class="block py-2 bg-blue-600 text-white text-center rounded-full hover:bg-blue-700 nav-link" data-view="search">Búsqueda</a>
+            </div>
+        </header>
+
+        <main class="px-6 py-8">
+            <div id="home-view" class="view hidden container mx-auto">
+                <div class="relative bg-cover bg-center rounded-lg shadow-xl overflow-hidden h-96" style="background-image: url('https://images.unsplash.com/photo-1579373380489-39b1a5f67a20?q=80&w=2938&auto=format&fit=crop');">
+                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div class="text-center text-white p-4">
+                            <h1 class="text-4xl md:text-6xl font-bold mb-4">Inteligencia Marítima a tu Alcance</h1>
+                            <p class="text-lg md:text-xl">Optimiza tu logística con análisis de datos en tiempo real impulsados por IA.</p>
+                        </div>
+                    </div>
+                </div>
+                <section class="mt-12">
+                    <div class="grid md:grid-cols-3 gap-8">
+                        <div id="card-about" class="card bg-white p-6 rounded-lg shadow-lg cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <i data-lucide="info" class="w-10 h-10 text-blue-600"></i>
+                                <div><h3 class="text-xl font-bold">¿Para qué sirve Chanc-ai?</h3><p class="text-gray-600">Descubre cómo funciona.</p></div>
+                            </div>
+                        </div>
+                        <div id="card-login" class="card bg-white p-6 rounded-lg shadow-lg cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <i data-lucide="user-circle-2" class="w-10 h-10 text-blue-600"></i>
+                                <div><h3 class="text-xl font-bold">Mi Cuenta</h3><p class="text-gray-600">Inicia sesión o crea una cuenta.</p></div>
+                            </div>
+                        </div>
+                        <div id="card-search" class="card bg-white p-6 rounded-lg shadow-lg cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <i data-lucide="search" class="w-10 h-10 text-blue-600"></i>
+                                <div><h3 class="text-xl font-bold">Búsqueda Avanzada</h3><p class="text-gray-600">Accede al panel de seguimiento.</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <div id="content-about" class="hidden mt-8 p-8 bg-white rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">¿Cómo funciona Chanc-ai?</h2>
+                    <p class="text-gray-700 leading-relaxed">Chanc-ai integra múltiples fuentes de datos marítimos (seguimiento, reportes portuarios, clima) y usa IA para darte informes claros sobre el estado de cualquier buque, permitiéndote tomar decisiones proactivas.</p>
+                </div>
+            </div>
+
+            <div id="login-view" class="view hidden container mx-auto">
+                <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
+                    <div id="login-form">
+                        <h2 class="text-2xl font-bold text-center mb-6">Iniciar Sesión</h2>
+                        <form id="form-login">
+                            <div class="mb-4">
+                                <label for="email-login" class="block text-gray-700 mb-2">Correo Electrónico</label>
+                                <input name="email" type="email" id="email-login" class="w-full px-4 py-2 border rounded-lg" autocomplete="email" required>
+                            </div>
+                            <div class="mb-6">
+                                <label for="password-login" class="block text-gray-700 mb-2">Contraseña</label>
+                                <input name="password" type="password" id="password-login" class="w-full px-4 py-2 border rounded-lg" autocomplete="current-password" required>
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Ingresar</button>
+                        </form>
+                        <p class="text-center mt-4">¿No tienes una cuenta? <a href="#" id="show-register" class="text-blue-600 hover:underline">Regístrate aquí</a></p>
+                    </div>
+
+                    <div id="register-form" class="hidden">
+                        <h2 class="text-2xl font-bold text-center mb-6">Crear Cuenta</h2>
+                        <form id="form-registro">
+                            <div class="grid grid-cols-2 gap-4">
+                                <input name="nombres" type="text" placeholder="Nombres" class="px-4 py-2 border rounded-lg" autocomplete="given-name" required>
+                                <input name="apellidos" type="text" placeholder="Apellidos" class="px-4 py-2 border rounded-lg" autocomplete="family-name" required>
+                            </div>
+                            <div class="mt-4">
+                                <input name="email" type="email" placeholder="Correo Electrónico" class="w-full px-4 py-2 border rounded-lg" autocomplete="email" required>
+                            </div>
+                             <div class="mt-4">
+                                <select name="pais" id="pais-registro" class="w-full px-4 py-2 border rounded-lg text-gray-500" autocomplete="country" required>
+                                    <option value="">Selecciona tu país</option>
+                                    <option value="peru">Perú</option>
+                                    <option value="chile">Chile</option>
+                                    <option value="ecuador">Ecuador</option>
+                                    <option value="colombia">Colombia</option>
+                                    <option value="argentina">Argentina</option>
+                                    <option value="brasil">Brasil</option>
+                                </select>
+                            </div>
+                            <div class="mt-4">
+                                <input name="password" type="password" placeholder="Crear Contraseña" class="w-full px-4 py-2 border rounded-lg" autocomplete="new-password" required>
+                            </div>
+                            <button type="submit" class="w-full mt-6 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Registrar</button>
+                        </form>
+                        <p class="text-center mt-4">¿Ya tienes una cuenta? <a href="#" id="show-login" class="text-blue-600 hover:underline">Inicia sesión</a></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="search-view" class="view hidden h-full">
+                 <div class="flex flex-col lg:flex-row gap-6 h-full">
+                    <div id="clima-container" class="w-full lg:w-1/4 bg-white p-4 rounded-lg shadow-lg flex flex-col overflow-y-auto">
+                        <div class="flex-shrink-0 flex justify-between items-center mb-4">
+                            <h3 id="clima-titulo" class="text-lg font-bold flex items-center"><i data-lucide="cloud-sun" class="mr-2"></i>Clima en tu País</h3>
+                            <button id="editar-ubicacion-btn" class="text-sm text-blue-600 hover:underline">Editar</button>
+                        </div>
+                        <div id="clima-lista-puertos" class="space-y-4">
+                            <p class="text-gray-500">Inicia sesión para ver el clima.</p>
+                        </div>
+                    </div>
+                    <div class="w-full lg:w-1/2 bg-white rounded-lg shadow-lg">
+                        <div id="map"></div>
+                    </div>
+                    <div class="w-full lg:w-1/4 bg-white p-4 rounded-lg shadow-lg flex flex-col h-full">
+                         <div class="flex-shrink-0">
+                             <h3 class="text-lg font-bold mb-4 flex items-center"><i data-lucide="ship" class="mr-2"></i>Consulta IA</h3>
+                             <div class="mb-4">
+                                 <input type="text" id="ship-id-input" placeholder="Nombre o IMO del buque" class="w-full px-4 py-2 border rounded-lg">
+                             </div>
+                             <button id="btnGenerarInforme" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 mb-4">Buscar</button>
+                             <h4 class="font-bold mb-2">Informe Generado:</h4>
+                         </div>
+                         <div id="informe-container" class="flex-grow bg-gray-100 rounded-lg p-3 overflow-y-auto min-h-0">
+                            <div id="informe-resultado" class="text-sm text-gray-700 whitespace-pre-wrap">Esperando consulta...</div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const views = document.querySelectorAll('.view');
+            const navLinks = document.querySelectorAll('.nav-link');
+            let map;
+            let shipMarker;
+            let paisUsuario = 'peru';
+
+            function switchView(viewId) {
+                views.forEach(view => view.id === viewId + '-view' ? view.classList.remove('hidden') : view.classList.add('hidden'));
+                if (viewId === 'search' && !map) setTimeout(initMap, 100);
+                if (viewId === 'search') checkSession(); 
+            }
+            
+            navLinks.forEach(link => link.addEventListener('click', e => {
+                e.preventDefault();
+                switchView(link.dataset.view);
+                document.getElementById('mobile-menu').classList.add('hidden');
+            }));
+
+            document.getElementById('mobile-menu-button').addEventListener('click', () => document.getElementById('mobile-menu').classList.toggle('hidden'));
+            document.getElementById('card-about').addEventListener('click', () => document.getElementById('content-about').classList.toggle('hidden'));
+            document.getElementById('card-login').addEventListener('click', () => switchView('login'));
+            document.getElementById('card-search').addEventListener('click', () => switchView('search'));
+
+            const showRegisterLink = document.getElementById('show-register');
+            const showLoginLink = document.getElementById('show-login');
+            showRegisterLink.addEventListener('click', e => { e.preventDefault(); toggleForms(true); });
+            showLoginLink.addEventListener('click', e => { e.preventDefault(); toggleForms(false); });
+            function toggleForms(showRegister) {
+                document.getElementById('login-form').classList.toggle('hidden', showRegister);
+                document.getElementById('register-form').classList.toggle('hidden', !showRegister);
+            }
+            
+            async function handleAuth(endpoint, form) {
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData.entries());
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await response.json();
+                    alert(result.message);
+                    if (response.ok) {
+                        paisUsuario = result.user.pais;
+                        updateNav(result.user.nombres);
+                        switchView('search');
+                    }
+                } catch (error) { alert('Error de conexión con el servidor.'); }
+            }
+
+            document.getElementById('form-registro').addEventListener('submit', e => { e.preventDefault(); handleAuth('/api/register', e.target); });
+            document.getElementById('form-login').addEventListener('submit', e => { e.preventDefault(); handleAuth('/api/login', e.target); });
+
+            async function checkSession() {
+                try {
+                    const response = await fetch('/api/session');
+                    const data = await response.json();
+                    if (data.logged_in) {
+                        paisUsuario = data.user.pais;
+                        updateNav(data.user.nombres);
+                        actualizarClima(paisUsuario);
+                    } else {
+                        updateNav(null);
+                    }
+                } catch (error) { console.error('Error checking session:', error); }
+            }
+            
+            function initMap() {
+                if (document.getElementById('map')) {
+                    map = L.map('map').setView([-9.9, -76.3], 5);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+                }
+            }
+            
+            function updateMap(lat, lon, shipName) {
+                if (map) {
+                    const newLatLng = L.latLng(lat, lon);
+                    if (shipMarker) {
+                        shipMarker.setLatLng(newLatLng);
+                    } else {
+                        shipMarker = L.marker(newLatLng).addTo(map);
+                    }
+                    shipMarker.bindPopup(`<b>${shipName}</b><br>Posición actual.`).openPopup();
+                    map.setView(newLatLng, 8);
+                }
+            }
+
+            const btnGenerarInforme = document.getElementById('btnGenerarInforme');
+            const informeResultadoDiv = document.getElementById('informe-resultado');
+            const shipIdInput = document.getElementById('ship-id-input');
+            
+            btnGenerarInforme.addEventListener('click', function() {
+                const imo = shipIdInput.value.trim();
+                if (!imo) { alert("Por favor, ingresa un número IMO."); return; }
+
+                informeResultadoDiv.textContent = 'Generando, por favor espera...';
+                btnGenerarInforme.disabled = true;
+
+                fetch('/api/generar-informe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imo: imo })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    informeResultadoDiv.textContent = data.reporte || data.error;
+                    if (data.coordenadas) {
+                        updateMap(data.coordenadas[0], data.coordenadas[1], "Buque Rastreado");
+                    }
+                })
+                .catch(error => { informeResultadoDiv.textContent = 'Error al generar el informe.'; })
+                .finally(() => { btnGenerarInforme.disabled = false; });
+            });
+
+            const climaTitulo = document.getElementById('clima-titulo');
+            const climaListaPuertos = document.getElementById('clima-lista-puertos');
+            async function actualizarClima(pais) {
+                climaTitulo.innerHTML = `<i data-lucide="cloud-sun" class="mr-2"></i>Clima en ${pais.charAt(0).toUpperCase() + pais.slice(1)}`;
+                climaListaPuertos.innerHTML = '<p class="text-gray-500">Actualizando clima...</p>';
+                lucide.createIcons();
+                
+                try {
+                    const response = await fetch(`/api/clima/${pais}`);
+                    if (!response.ok) throw new Error('No se pudo obtener el clima.');
+                    const data = await response.json();
+                    climaListaPuertos.innerHTML = '';
+                    if (data.length === 0) {
+                        climaListaPuertos.innerHTML = '<p class="text-gray-500">No hay puertos para este país.</p>'; return;
+                    }
+                    data.forEach(puerto => {
+                        const puertoDiv = document.createElement('div');
+                        puertoDiv.className = 'p-3 bg-blue-50 rounded-lg';
+                        puertoDiv.innerHTML = `<p class="font-bold">Puerto de ${puerto.puerto}</p><p class="text-sm text-gray-600">${puerto.condicion}, ${puerto.viento_kph} kph</p>`;
+                        climaListaPuertos.appendChild(puertoDiv);
+                    });
+                } catch (error) {
+                    climaListaPuertos.innerHTML = '<p class="text-red-500">Error al cargar datos del clima.</p>';
+                }
+            }
+
+            document.getElementById('editar-ubicacion-btn').addEventListener('click', function() {
+                const nuevoPais = prompt("Ingresa el nombre de tu país (e.g., Peru, Chile):", paisUsuario);
+                if (nuevoPais && nuevoPais.trim() !== '') {
+                    paisUsuario = nuevoPais.trim().toLowerCase();
+                    actualizarClima(paisUsuario);
+                }
+            });
+
+            function updateNav(userName) {
+                const userMenu = document.getElementById('user-menu');
+                const loginLink = document.getElementById('login-link');
+                const userGreeting = document.getElementById('user-greeting');
+                const mobileUserMenu = document.getElementById('mobile-user-menu');
+                const mobileLoginLink = document.getElementById('mobile-login-link');
+                const mobileUserGreeting = document.getElementById('mobile-user-greeting');
+
+                if (userName) {
+                    userGreeting.textContent = `Hola, ${userName}`;
+                    mobileUserGreeting.textContent = `Hola, ${userName}`;
+                    userMenu.classList.remove('hidden');
+                    mobileUserMenu.classList.remove('hidden');
+                    loginLink.classList.add('hidden');
+                    mobileLoginLink.classList.add('hidden');
+                } else {
+                    userMenu.classList.add('hidden');
+                    mobileUserMenu.classList.add('hidden');
+                    loginLink.classList.remove('hidden');
+                    mobileLoginLink.classList.remove('hidden');
+                }
+            }
+
+            function handleLogout(e) {
+                e.preventDefault();
+                fetch('/api/logout', { method: 'POST' }).then(() => {
+                    updateNav(null);
+                    switchView('home');
+                });
+            }
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('mobile-logout-btn').addEventListener('click', handleLogout);
+            
+            switchView('home');
+            checkSession();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,40 @@
+# Ignorar Entorno Virtual
+# ========================
+venv/
+env/
+.venv/
+*/venv/
+*/env/
+*/.venv/
+.env
+
+# Ignorar Archivos de Caché y Compilación
+# ========================================
+__pycache__/
+*.pyc
+*~$
+.ipynb_checkpoints/ # Si usas Jupyter
+
+# Ignorar Archivos del Sistema Operativo
+# ======================================
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Ignorar Datos y Logs Sensibles
+# =============================
+*.log
+*.sqlite3 # Base de datos SQLite (si usas Django o Flask)
+db.sqlite3
+/data/
+/logs/
+
+# Ignorar Archivos de Configuración Sensibles
+# ==========================================
+.env # Archivo de variables de entorno
+settings_local.py # Configuración local (ej. Django)
+
+# Ignorar Archivos de Instalación y Distribución
+# ===============================================
+dist/
+build/
+*.egg-info/
