@@ -16,9 +16,12 @@ app.config['SECRET_KEY'] = os.urandom(24)
 # Configuración de la base de datos
 db_url = os.getenv('DATABASE_URL')
 if not db_url:
-    raise ValueError("DATABASE_URL no está configurada en el archivo .env")
+    raise ValueError("DATABASE_URL no está configurada en el archivo .env o variables de entorno")
+
+# SQLAlchemy 2.0 prefiere 'postgresql://' en lugar de 'postgres://'
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -44,7 +47,9 @@ class User(db.Model, UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Asegúrate de que la sesión de la base de datos se maneje correctamente
+    with app.app_context():
+        return User.query.get(int(user_id))
 
 PORTS_DATABASE = {
     "peru": ["Callao", "Paita", "Matarani"], "chile": ["Valparaiso", "San Antonio"],
@@ -212,6 +217,23 @@ def accion_principal(imo_barco, user_nombre):
 def home():
     return render_template('index.html')
 
+# !!! ================================================================= !!!
+# !!! RUTA TEMPORAL PARA CREAR TABLAS EN RENDER                         !!!
+# !!! Visita https://chanc-ai.onrender.com/create-db-tables-once        !!!
+# !!! UNA VEZ después de desplegar, y LUEGO BORRA ESTE CÓDIGO.         !!!
+# !!! ================================================================= !!!
+@app.route('/create-db-tables-once')
+def create_db_tables_once():
+    try:
+        with app.app_context():
+            db.create_all()
+        return "Tablas creadas exitosamente!", 200
+    except Exception as e:
+        return f"Error al crear tablas: {str(e)}", 500
+# !!! ================================================================= !!!
+# !!! FIN DEL BLOQUE TEMPORAL                                           !!!
+# !!! ================================================================= !!!
+
 @app.route('/api/generar-informe', methods=['POST'])
 def generar_informe_api():
     imo = request.json.get('imo')
@@ -268,6 +290,6 @@ def session_status():
 # --- PUNTO DE ENTRADA DEL PROGRAMA ---
 if __name__ == "__main__":
     with app.app_context():
-        # **Asegúrate de que esta línea se ejecute al menos una vez para crear las tablas.**
+        # Esta línea crea las tablas para tu desarrollo LOCAL
         db.create_all() 
     app.run(debug=True, port=5000)
