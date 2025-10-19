@@ -228,7 +228,7 @@ def home():
 # !!! UNA VEZ después de desplegar, y LUEGO BORRA ESTE CÓDIGO.         !!!
 # !!! ================================================================= !!!
 @app.route('/create-db-tables-once')
-def create_db-tables-once():
+def create_db_tables_once(): # <--- ¡¡¡AQUÍ ESTÁ LA CORRECCIÓN!!!
     try:
         with app.app_context():
             db.create_all()
@@ -248,7 +248,7 @@ def generar_informe_api():
     if current_user.is_authenticated:
         user_nombre = current_user.nombres
 
-    return jsonify(accion_principal(imo_barco, user_nombre))
+    return jsonify(accion_principal(imo, user_nombre))
 
 @app.route('/api/clima/<pais>')
 def clima_por_pais_api(pais):
